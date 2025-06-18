@@ -38,10 +38,14 @@ const Login = () => {
         text: "Login successful",
         icon: "success",
         timer: 1500,
-        showConfirmButton: false,
+        confirmButtonText: "OK",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          navigate("/dashboard"); // Navigate only after user clicks OK
+        }
       });
-
-      navigate("/dashboard");
     } catch (error) {
       console.error("Login failed:", error);
       Swal.fire(

@@ -10,36 +10,41 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [fullname, setFullname] = useState("");
   const [phone_number, setPhone_number] = useState("");
-  const [studentClass, setClass] = useState("");
+  const [studentClass, setStudentClass] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
-      await API.post("/student/student_registration", {
+      const res = await API.post("/student/student_registration", {
         username,
         email,
         password,
         fullname,
         phone_number,
         class: studentClass,
-      }).then((res) => {
-        Swal.fire({
-          title: "Great!!!",
-          text: res.data.message,
-          icon: "success",
-          timer: 1500,
-          showConfirmButton: false,
-        });
       });
-      setUsername("");
-      setEmail("");
-      setPassword("");
-      setFullname("");
-      setPhone_number("");
-      setClass("");
-      setLoading(false);
+
+      const result = await Swal.fire({
+        title: "Great!!!",
+        text: res.data.message,
+        icon: "success",
+        showConfirmButton: true,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      });
+
+      if (result.isConfirmed) {
+        setUsername("");
+        setEmail("");
+        setPassword("");
+        setFullname("");
+        setPhone_number("");
+        setStudentClass(""); // FIXED here
+        setLoading(false);
+        navigate("/login"); // Navigate after user clicks OK
+      }
     } catch (error) {
       console.error("Registration error:", error);
 
@@ -48,7 +53,7 @@ const Register = () => {
         error?.message ||
         "Registration failed. Please try again.";
 
-      Swal.fire("Error", message, "error");
+      await Swal.fire("Error", message, "error");
       setLoading(false);
     }
   };
@@ -120,7 +125,7 @@ const Register = () => {
                 <select
                   className="bg-gray-100 h-10 px-2 border border-gray-300 focus:outline-purple-300 rounded-sm"
                   value={studentClass}
-                  onChange={(e) => setClass(e.target.value)}
+                  onChange={(e) => setStudentClass(e.target.value)}
                 >
                   <option value="" disabled>
                     Select Class
