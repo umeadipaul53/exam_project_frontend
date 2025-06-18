@@ -17,7 +17,7 @@ const VerifyAccount = () => {
 
     const verify = async () => {
       try {
-        const res = API.get(`/student/verify?token=${token}`);
+        const res = await API.get(`/student/verify?token=${token}`);
         setStatus("success");
         setMessage(res.data.message || "Your account has been verified!");
       } catch (error) {
