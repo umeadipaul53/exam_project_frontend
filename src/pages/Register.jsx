@@ -33,6 +33,7 @@ const Register = () => {
         showConfirmButton: true,
         allowOutsideClick: false,
         allowEscapeKey: false,
+        confirmButtonText: "Proceed to Login",
       });
 
       if (result.isConfirmed) {
