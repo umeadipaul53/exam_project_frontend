@@ -15,7 +15,6 @@ const Logout = () => {
     } finally {
       // Clear access token and broadcast across tabs
       clearToken();
-
       // Redirect to login
       navigate("/login");
     }
