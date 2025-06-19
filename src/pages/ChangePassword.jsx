@@ -2,16 +2,17 @@ import { Link } from "react-router-dom";
 import API from "../api/api";
 import Swal from "sweetalert2";
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 const ChangePassword = () => {
-  const { token } = useParams();
+  const [searchParams] = useSearchParams();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [tokenValid, setTokenValid] = useState(null);
   const navigate = useNavigate();
+  const token = searchParams.get("token");
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -23,13 +24,13 @@ const ChangePassword = () => {
     setLoading(true);
 
     try {
-      const res = API.put("/student/change_password", {
+      const res = await API.put("/student/change_password", {
         token,
         newPass: newPassword,
         confirmPass: confirmPassword,
       });
 
-      Swal.fire("Success", res.data.message, "success");
+      await Swal.fire("Success", res.data.message, "success");
       navigate("/login");
     } catch (error) {
       const message =
@@ -37,7 +38,7 @@ const ChangePassword = () => {
         error?.message ||
         "Your password could not be changed at the moment, try again later";
 
-      await Swal.fire("error", message, "error");
+      await Swal.fire("Error", message, "error");
       setLoading(false);
     }
   };
@@ -107,7 +108,7 @@ const ChangePassword = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !newPassword || !confirmPassword}
               className="w-full py-3 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 transition-colors"
             >
               {loading ? "Changing..." : "Change Password"}
