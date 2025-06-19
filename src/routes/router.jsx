@@ -10,6 +10,8 @@ import StudentProfile from "../pages/StudentProfile";
 import Register from "../pages/Register";
 import StartExam from "../pages/StartExam";
 import VerifyAccount from "../pages/VerifyAccount";
+import ForgotPassword from "../pages/ForgotPassword";
+import ChangePassword from "../pages/ChangePassword";
 
 const router = createBrowserRouter([
   {
@@ -27,6 +29,14 @@ const router = createBrowserRouter([
   {
     path: "/verify-student-account",
     element: <VerifyAccount />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPassword />,
+  },
+  {
+    path: "/change_password",
+    element: <ChangePassword />,
   },
   {
     path: "/profile",
