@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import {
   BarChart,
@@ -12,21 +12,6 @@ import { UserCircle2, LogOut, PlayCircle } from "lucide-react";
 import API from "../api/api";
 import { clearToken } from "../auth/tokenStore";
 import { useNavigate } from "react-router-dom";
-
-const sampleTests = [
-  {
-    name: "Math CBT 1",
-    subject: "Mathematics",
-    duration: "60 mins",
-    status: "Not started",
-  },
-  {
-    name: "Physics CBT",
-    subject: "Physics",
-    duration: "45 mins",
-    status: "Completed",
-  },
-];
 
 const sampleResults = [
   { name: "Physics CBT", score: "78%", status: "Passed", date: "2025-06-10" },
@@ -81,6 +66,31 @@ const Button = ({
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [fetchExam, setFetchExam] = useState([]);
+
+  console.log(user);
+
+  const formatDuration = (minutes) => {
+    if (minutes <= 59) {
+      return `${minutes} mins`;
+    } else {
+      const hrs = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins ? `${hrs} hr ${mins} min` : `${hrs} hr`;
+    }
+  };
+
+  const getExam = async () => {
+    try {
+      const res = await API.get("/student/fetch-exam", {
+        withCredentials: true,
+      });
+      console.log(res.data);
+      setFetchExam(res.data.data);
+    } catch (error) {
+      console.log("could not fetch exams", error);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -96,6 +106,10 @@ const Dashboard = () => {
       navigate("/login");
     }
   };
+
+  useEffect(() => {
+    getExam();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8">
@@ -116,22 +130,22 @@ const Dashboard = () => {
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-3">Upcoming Tests</h2>
+          <h2 className="text-lg font-semibold mb-3">Tests available</h2>
           <div className="space-y-3">
-            {sampleTests.map((test, idx) => (
+            {fetchExam.map((test, idx) => (
               <div
                 key={idx}
                 className="flex items-center justify-between bg-gray-50 p-3 rounded-lg shadow-sm"
               >
                 <div>
-                  <p className="font-medium">{test.name}</p>
+                  <p className="font-medium">{test.title}</p>
                   <p className="text-sm text-gray-500">
-                    {test.subject} • {test.duration}
+                    {test.subject} • {formatDuration(test.duration)}
                   </p>
                 </div>
                 <Button
                   onClick={() => {
-                    navigate("/start_exam");
+                    navigate(`/start_exam/${test._id}`);
                   }}
                   size="sm"
                   variant="outline"
@@ -145,7 +159,7 @@ const Dashboard = () => {
         </Card>
 
         <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-3">Recent Results</h2>
+          <h2 className="text-lg font-semibold mb-3">Completed Exam Results</h2>
           <div className="space-y-3">
             {sampleResults.map((result, idx) => (
               <div
