@@ -12,19 +12,8 @@ import { UserCircle2, LogOut, PlayCircle } from "lucide-react";
 import API from "../api/api";
 import { clearToken } from "../auth/tokenStore";
 import { useNavigate } from "react-router-dom";
-
-const sampleResults = [
-  { name: "Physics CBT", score: "78%", status: "Passed", date: "2025-06-10" },
-  { name: "Chemistry CBT", score: "65%", status: "Passed", date: "2025-06-05" },
-];
-
-const testStats = [
-  { name: "Mon", tests: 2 },
-  { name: "Tue", tests: 1 },
-  { name: "Wed", tests: 3 },
-  { name: "Thu", tests: 2 },
-  { name: "Fri", tests: 4 },
-];
+import { Link } from "react-router-dom";
+import { Printer } from "lucide-react";
 
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white rounded-2xl shadow-md ${className}`}>
@@ -67,8 +56,13 @@ const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [fetchExam, setFetchExam] = useState([]);
-
-  console.log(user);
+  const [fetchResult, setFetchResult] = useState([]);
+  const [totalExamTaken, setTotalExamTaken] = useState(0);
+  const [averageScore, setAverageScore] = useState(0);
+  const [passRate, setPassRate] = useState(0);
+  const [subjectScores, setSubjectScores] = useState({});
+  const [topSubjects, setTopSubjects] = useState([]);
+  const currentYear = new Date().getFullYear();
 
   const formatDuration = (minutes) => {
     if (minutes <= 59) {
@@ -85,112 +79,285 @@ const Dashboard = () => {
       const res = await API.get("/student/fetch-exam", {
         withCredentials: true,
       });
-      console.log(res.data);
+
       setFetchExam(res.data.data);
     } catch (error) {
-      console.log("could not fetch exams", error);
+      if (error.response?.data?.message) {
+        setFetchExam({ message: error.response.data.message });
+      } else {
+        console.log("Unexpected error:", error);
+      }
+    }
+  };
+
+  const getResult = async () => {
+    try {
+      const res = await API.get("/student/fetch-result", {
+        withCredentials: true,
+      });
+
+      const resultData = Array.isArray(res.data.data) ? res.data.data : [];
+      const total = resultData.length;
+      setFetchResult(res.data.data);
+      setTotalExamTaken(total);
+      setAverageScore(
+        parseFloat(
+          (resultData.reduce((acc, res) => acc + (res.totalscore || 0), 0) /
+            resultData.reduce((acc, res) => acc + (res.maxscore || 1), 0)) *
+            100
+        ).toFixed(2)
+      );
+
+      const passCount = resultData.filter(
+        (res) => res.status === "Pass"
+      ).length;
+
+      setPassRate(parseFloat(total ? (passCount / total) * 100 : 0).toFixed(2));
+
+      const scoresMap = {};
+
+      resultData.forEach((element) => {
+        if (!scoresMap[element.title]) {
+          scoresMap[element.title] = { total: 0, max: 0, count: 0 };
+        }
+
+        scoresMap[element.title].total += element.totalscore || 0;
+        scoresMap[element.title].max += element.maxscore || 1;
+        scoresMap[element.title].count += 1;
+      });
+
+      // Update subjectScores with full map
+      setSubjectScores(scoresMap);
+
+      // Calculate top subject
+      const subjectAverages = Object.entries(scoresMap).map(
+        ([subject, data]) => ({
+          subject,
+          avg: parseFloat(((data.total / data.max) * 100).toFixed(2)),
+        })
+      );
+
+      // Find highest average
+      const highestAvg = Math.max(...subjectAverages.map((s) => s.avg));
+
+      // Filter subjects with that highest average
+      const top = subjectAverages
+        .filter((s) => s.avg === highestAvg)
+        .map((s) => s.subject); // returns an array of subject names
+
+      setTopSubjects(top);
+    } catch (error) {
+      if (error.response?.data?.message) {
+        setFetchResult({ message: error.response.data.message });
+      } else {
+        console.log("Unexpected error:", error);
+      }
     }
   };
 
   const handleLogout = async () => {
     try {
-      // Call backend to clear refresh token
-      await API.post("/student/logout", {}, { withCredentials: true });
+      // Call backend to clear the refresh token and delete it from DB
+      await API.post("/student/logout", null, {
+        withCredentials: true,
+      });
     } catch (err) {
-      console.error("Error during logout:", err.message);
+      console.error("Error during logout:", err?.response?.data || err.message);
+      // Optionally: show a toast or message to user
     } finally {
-      // Clear access token and broadcast across tabs
+      // 1. Clear access token from memory/session/broadcast
       clearToken();
 
-      // Redirect to login
+      // 2. Optionally broadcast logout to other tabs
+      if (window.BroadcastChannel) {
+        new BroadcastChannel("auth").postMessage({ type: "LOGOUT" });
+      }
+
+      // 3. Navigate to login
       navigate("/login");
     }
   };
 
   useEffect(() => {
     getExam();
+    getResult();
   }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <header className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Student Dashboard</h1>
-        <h3 className="text-2xl font-bold">Welcome {user?.fullname}</h3>
-        <div className="flex items-center gap-4">
-          <UserCircle2 className="h-6 w-6 text-gray-600" />
+      {/* Header */}
+      <header className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-blue-700">
+            📘 Student Dashboard
+          </h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link to="/student/profile" className="flex items-center gap-2 group">
+            <UserCircle2 className="h-7 w-7 text-gray-600 group-hover:text-blue-600" />
+            <span className="text-sm font-medium text-gray-700 group-hover:underline">
+              {user?.fullname}
+            </span>
+          </Link>
           <Button
             onClick={handleLogout}
-            variant="ghost"
-            className="flex items-center gap-1 text-sm"
+            variant="outline"
+            className="flex items-center gap-1 text-sm text-red-600 border-red-600 hover:bg-red-50"
           >
             Logout <LogOut className="w-4 h-4" />
           </Button>
         </div>
       </header>
 
+      {/* Grid Sections */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-3">Tests available</h2>
-          <div className="space-y-3">
-            {fetchExam.map((test, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between bg-gray-50 p-3 rounded-lg shadow-sm"
-              >
-                <div>
-                  <p className="font-medium">{test.title}</p>
-                  <p className="text-sm text-gray-500">
-                    {test.subject} • {formatDuration(test.duration)}
-                  </p>
-                </div>
-                <Button
-                  onClick={() => {
-                    navigate(`/start_exam/${test._id}`);
-                  }}
-                  size="sm"
-                  variant="outline"
-                  className="flex items-center gap-1"
+        {/* Available Tests */}
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold mb-4">📝 Available Tests</h2>
+
+          {!Array.isArray(fetchExam) && fetchExam?.message && (
+            <p className="text-sm text-gray-500 italic">{fetchExam.message}</p>
+          )}
+
+          {Array.isArray(fetchExam) && fetchExam.length > 0 && (
+            <div className="space-y-3">
+              {fetchExam.map((test, idx) => (
+                <div
+                  key={idx}
+                  className="flex justify-between items-center bg-white border p-4 rounded-xl shadow-sm"
                 >
-                  <PlayCircle className="w-4 h-4" /> Start
-                </Button>
-              </div>
-            ))}
-          </div>
+                  <div>
+                    <p className="font-medium text-gray-800">{test.title}</p>
+                    <p className="text-sm text-gray-500">
+                      {test.subject} • {formatDuration(test.duration)}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      navigate(
+                        `/student/start_exam?class=${encodeURIComponent(
+                          test.class
+                        )}&subject=${encodeURIComponent(
+                          test.subject
+                        )}&regno=${encodeURIComponent(
+                          user?.regno
+                        )}&duration=${encodeURIComponent(test.duration)}`
+                      );
+                    }}
+                    size="sm"
+                    variant="default"
+                    className="flex items-center gap-1"
+                  >
+                    <PlayCircle className="w-4 h-4" /> Start
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
-        <Card className="p-4">
-          <h2 className="text-lg font-semibold mb-3">Completed Exam Results</h2>
-          <div className="space-y-3">
-            {sampleResults.map((result, idx) => (
-              <div
-                key={idx}
-                className="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm"
-              >
-                <div>
-                  <p className="font-medium">{result.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {result.status} • {result.date}
-                  </p>
+        {/* Completed Results */}
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold mb-4">
+            🎓 Completed Exam Results
+          </h2>
+
+          {!Array.isArray(fetchResult) && fetchResult?.message && (
+            <p className="text-sm text-gray-500 italic">
+              {fetchResult.message}
+            </p>
+          )}
+
+          {Array.isArray(fetchResult) && fetchResult.length > 0 && (
+            <div className="space-y-3">
+              {fetchResult.map((result, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white border rounded-xl p-4 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4"
+                >
+                  <div>
+                    <p className="font-semibold text-lg text-gray-800 mb-1">
+                      {result.title}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Started: {result.start}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Submitted: {result.submitted}
+                    </p>
+                    <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                      Status:
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${
+                          result.status === "Pass"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {result.status}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="text-right space-y-2">
+                    <p className="text-sm text-gray-600">Score</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {result.totalscore ?? "--"} / {result.maxscore ?? "--"}
+                    </p>
+                  </div>
                 </div>
-                <span className="font-semibold text-green-600">
-                  {result.score}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  navigate(
+                    `/student/print_result?class=${encodeURIComponent(
+                      user.class
+                    )}&regno=${encodeURIComponent(
+                      user?.regno
+                    )}&year=${currentYear}`
+                  )
+                }
+                className="flex items-center gap-1 text-sm"
+              >
+                <Printer className="w-4 h-4" />
+                Print Result
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
 
-      <Card className="p-4 mt-6">
-        <h2 className="text-lg font-semibold mb-4">Weekly Test Activity</h2>
-        <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={testStats}>
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="tests" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+      <Card className="p-5 mt-8">
+        <h2 className="text-lg font-semibold mb-4">
+          📈 Your Performance Summary
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg text-center">
+            <p className="text-sm text-gray-500">Exams Taken</p>
+            <p className="text-2xl font-bold text-blue-700">{totalExamTaken}</p>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg text-center">
+            <p className="text-sm text-gray-500">Average Score</p>
+            <p className="text-2xl font-bold text-green-700">{averageScore}%</p>
+          </div>
+          <div className="bg-yellow-50 p-4 rounded-lg text-center">
+            <p className="text-sm text-gray-500">Pass Rate</p>
+            <p className="text-2xl font-bold text-yellow-600">{passRate}%</p>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg text-center">
+            <p className="text-sm text-gray-500">
+              Top Performing Subject{topSubjects.length > 1 ? "s" : ""}
+            </p>
+            <p className="text-sm text-gray-700">
+              {" "}
+              <span className="font-medium text-blue-600">
+                {topSubjects.join(", ")}
+              </span>
+            </p>
+          </div>
+        </div>
       </Card>
     </div>
   );

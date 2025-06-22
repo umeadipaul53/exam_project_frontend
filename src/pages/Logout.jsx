@@ -8,14 +8,23 @@ const Logout = () => {
 
   const handleLogout = async () => {
     try {
-      // Call backend to clear refresh token
-      await API.post("/student/logout", {}, { withCredentials: true });
+      // Call backend to clear the refresh token and delete it from DB
+      await API.post("/student/logout", null, {
+        withCredentials: true,
+      });
     } catch (err) {
-      console.error("Error during logout:", err.message);
+      console.error("Error during logout:", err?.response?.data || err.message);
+      // Optionally: show a toast or message to user
     } finally {
-      // Clear access token and broadcast across tabs
+      // 1. Clear access token from memory/session/broadcast
       clearToken();
-      // Redirect to login
+
+      // 2. Optionally broadcast logout to other tabs
+      if (window.BroadcastChannel) {
+        new BroadcastChannel("auth").postMessage({ type: "LOGOUT" });
+      }
+
+      // 3. Navigate to login
       navigate("/login");
     }
   };

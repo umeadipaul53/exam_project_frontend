@@ -4,7 +4,6 @@ import Dashboard from "../pages/Dashboard";
 import Login from "../pages/Login";
 import SetExamQuestions from "../pages/SetExamQuestions";
 import { AuthLoader } from "../auth/authLoader";
-import { AdminLoader } from "../auth/adminLoader";
 import AuthInit from "../pages/AuthInit";
 import StudentProfile from "../pages/StudentProfile";
 import Register from "../pages/Register";
@@ -12,11 +11,17 @@ import StartExam from "../pages/StartExam";
 import VerifyAccount from "../pages/VerifyAccount";
 import ForgotPassword from "../pages/ForgotPassword";
 import ChangePassword from "../pages/ChangePassword";
+import UnAuthorized from "../pages/UnAuthorized";
+import PrintResult from "../pages/PrintResult";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <Home />,
+  },
+  {
+    path: "/unauthorized",
+    element: <UnAuthorized />,
   },
   {
     path: "/login",
@@ -39,36 +44,45 @@ const router = createBrowserRouter([
     element: <ChangePassword />,
   },
   {
-    path: "/profile",
+    path: "/student/profile",
     element: (
       <AuthInit>
         <StudentProfile />
       </AuthInit>
     ),
-    loader: AuthLoader,
+    loader: AuthLoader("user"),
   },
   {
-    path: "/start_exam",
+    path: "/student/print_result",
+    element: (
+      <AuthInit>
+        <PrintResult />
+      </AuthInit>
+    ),
+    loader: AuthLoader("user"),
+  },
+  {
+    path: "/student/start_exam",
     element: (
       <AuthInit>
         <StartExam />
       </AuthInit>
     ),
-    loader: AuthLoader,
+    loader: AuthLoader("user"),
   },
   {
-    path: "/dashboard",
+    path: "/student/dashboard",
     element: (
       <AuthInit>
         <Dashboard />
       </AuthInit>
     ),
-    loader: AuthLoader,
+    loader: AuthLoader("user"),
   },
   {
-    path: "/set-exam-question",
+    path: "/admin/set-exam-question",
     element: <SetExamQuestions />,
-    loader: AdminLoader,
+    loader: AuthLoader("admin"),
   },
 ]);
 

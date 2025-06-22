@@ -1,4 +1,5 @@
 let accessToken = sessionStorage.getItem("accessToken") || null;
+let userRole = sessionStorage.getItem("userRole") || null;
 
 const listeners = [];
 
@@ -17,8 +18,23 @@ bc.onmessage = (event) => {
   }
 };
 
+export function getRole() {
+  return userRole;
+}
+
+export function setRole(role) {
+  userRole = role;
+  sessionStorage.setItem("userRole", role);
+}
+
+export function clearRole() {
+  userRole = null;
+  sessionStorage.removeItem("userRole");
+}
+
+// Always get fresh token from sessionStorage
 export function getToken() {
-  return accessToken;
+  return sessionStorage.getItem("accessToken");
 }
 
 export function setToken(token) {
@@ -31,15 +47,36 @@ export function setToken(token) {
 export function clearToken() {
   accessToken = null;
   sessionStorage.removeItem("accessToken");
+  clearRole();
   bc.postMessage({ type: "CLEAR_TOKEN" });
   listeners.forEach((callback) => callback(null));
 }
 
-// Optional: React apps can subscribe to token changes
 export function subscribe(callback) {
   listeners.push(callback);
   return () => {
     const index = listeners.indexOf(callback);
     if (index !== -1) listeners.splice(index, 1);
   };
+}
+
+// 🆕 Wait for token to be available (useful during page refresh)
+export function waitForToken(timeout = 3000) {
+  return new Promise((resolve, reject) => {
+    const token = getToken();
+    if (token) return resolve(token);
+
+    const timeoutId = setTimeout(
+      () => reject(new Error("Token timeout")),
+      timeout
+    );
+
+    const unsubscribe = subscribe((newToken) => {
+      if (newToken) {
+        clearTimeout(timeoutId);
+        unsubscribe();
+        resolve(newToken);
+      }
+    });
+  });
 }

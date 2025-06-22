@@ -1,42 +1,48 @@
 import API from "../api/api";
 import { redirect } from "react-router-dom";
-import { getToken, setToken } from "./tokenStore";
+import { getToken, setToken, setRole, getRole } from "./tokenStore";
 
-export async function AuthLoader() {
-  try {
-    const token = getToken();
-    if (!token) throw new Error("No access token");
-
-    const user = await API.get("/student/user", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    return { user: user.data, accessToken: token };
-  } catch (err) {
-    console.error("Access token invalid or expired:", err.message);
-
-    // Try refreshing
+export function AuthLoader(expectedRole) {
+  return async () => {
     try {
-      const refresh = await API.post(
-        "/student/refresh-token",
-        {},
-        { withCredentials: true }
-      );
+      const token = getToken();
+      if (!token) throw new Error("No access token");
 
-      const newToken = refresh.data?.accesstoken;
-      if (!newToken) throw new Error("No access token in refresh response");
-
-      setToken(newToken);
-
-      const user = await API.get("/student/user", {
-        headers: { Authorization: `Bearer ${newToken}` },
+      const res = await API.get("/student/user", {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log(user.data);
-      return { user: user.data, accessToken: newToken };
-    } catch (refreshErr) {
-      console.error("Refresh token failed:", refreshErr.message);
-      return redirect("/login");
+      const user = res.data;
+      setRole(user.role); // store role
+      if (expectedRole && user.role !== expectedRole)
+        return redirect("/unauthorized");
+
+      return { user, accessToken: token };
+    } catch (err) {
+      try {
+        const refresh = await API.post(
+          "/student/refresh-token",
+          {},
+          { withCredentials: true }
+        );
+        const newToken = refresh.data?.accesstoken;
+        if (!newToken) throw new Error("No access token from refresh");
+
+        setToken(newToken);
+
+        const res = await API.get("/student/user", {
+          headers: { Authorization: `Bearer ${newToken}` },
+        });
+
+        const user = res.data;
+        setRole(user.role);
+        if (expectedRole && user.role !== expectedRole)
+          return redirect("/unauthorized");
+
+        return { user, accessToken: newToken };
+      } catch {
+        return redirect("/login");
+      }
     }
-  }
+  };
 }

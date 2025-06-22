@@ -4,6 +4,7 @@ import {
   getToken,
   clearToken,
   subscribe,
+  setRole,
 } from "./tokenStore";
 import API from "../api/api";
 
@@ -35,6 +36,7 @@ export const AuthProvider = ({ children }) => {
         });
 
         console.log(userRes.data);
+        setRole(userRes.data.role);
         setUser(userRes.data);
       } catch (err) {
         console.warn(
@@ -44,6 +46,7 @@ export const AuthProvider = ({ children }) => {
         setAccessToken(null);
         syncToken(null);
         setUser(null);
+        setRole(null);
       } finally {
         setLoading(false);
       }
@@ -58,6 +61,7 @@ export const AuthProvider = ({ children }) => {
       if (!token) {
         setAccessToken(null);
         setUser(null);
+        setRole(null);
       }
     });
     return unsubscribe;
@@ -76,6 +80,7 @@ export const AuthProvider = ({ children }) => {
           clearToken();
           setAccessToken(null);
           setUser(null);
+          setRole(null);
         },
       }}
     >
