@@ -13,6 +13,8 @@ import ForgotPassword from "../pages/ForgotPassword";
 import ChangePassword from "../pages/ChangePassword";
 import UnAuthorized from "../pages/UnAuthorized";
 import PrintResult from "../pages/PrintResult";
+import TwoFactorAuthentication from "../pages/TwoFactorAuthentication";
+import EditStudentAccount from "../pages/EditStudentAccount";
 
 const router = createBrowserRouter([
   {
@@ -26,6 +28,10 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/two-factor-authentication",
+    element: <TwoFactorAuthentication />,
   },
   {
     path: "/register",
@@ -42,6 +48,15 @@ const router = createBrowserRouter([
   {
     path: "/change_password",
     element: <ChangePassword />,
+  },
+  {
+    path: "/student/edit_student_account",
+    element: (
+      <AuthInit>
+        <EditStudentAccount />
+      </AuthInit>
+    ),
+    loader: AuthLoader("user"),
   },
   {
     path: "/student/profile",

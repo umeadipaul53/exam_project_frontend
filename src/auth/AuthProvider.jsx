@@ -35,7 +35,6 @@ export const AuthProvider = ({ children }) => {
           headers: { Authorization: `Bearer ${newToken}` },
         });
 
-        console.log(userRes.data);
         setRole(userRes.data.role);
         setUser(userRes.data);
       } catch (err) {

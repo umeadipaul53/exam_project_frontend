@@ -14,6 +14,7 @@ import { clearToken } from "../auth/tokenStore";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { Printer } from "lucide-react";
+import Swal from "sweetalert2";
 
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white rounded-2xl shadow-md ${className}`}>
@@ -53,7 +54,7 @@ const Button = ({
 };
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const [fetchExam, setFetchExam] = useState([]);
   const [fetchResult, setFetchResult] = useState([]);
@@ -63,6 +64,9 @@ const Dashboard = () => {
   const [subjectScores, setSubjectScores] = useState({});
   const [topSubjects, setTopSubjects] = useState([]);
   const currentYear = new Date().getFullYear();
+
+  const userId = user.id;
+  const twofactor = user.twofactor;
 
   const formatDuration = (minutes) => {
     if (minutes <= 59) {
@@ -98,14 +102,17 @@ const Dashboard = () => {
 
       const resultData = Array.isArray(res.data.data) ? res.data.data : [];
       const total = resultData.length;
+
       setFetchResult(res.data.data);
+
       setTotalExamTaken(total);
+
       setAverageScore(
         parseFloat(
           (resultData.reduce((acc, res) => acc + (res.totalscore || 0), 0) /
             resultData.reduce((acc, res) => acc + (res.maxscore || 1), 0)) *
             100
-        ).toFixed(2)
+        ).toFixed(1)
       );
 
       const passCount = resultData.filter(
@@ -133,7 +140,7 @@ const Dashboard = () => {
       const subjectAverages = Object.entries(scoresMap).map(
         ([subject, data]) => ({
           subject,
-          avg: parseFloat(((data.total / data.max) * 100).toFixed(2)),
+          avg: parseFloat(((data.total / data.max) * 100).toFixed(1)),
         })
       );
 
@@ -152,6 +159,56 @@ const Dashboard = () => {
       } else {
         console.log("Unexpected error:", error);
       }
+    }
+  };
+
+  const handleActivate2FA = async () => {
+    try {
+      const response = await API.patch(
+        "/student/enable-two-factor",
+        {},
+        { withCredentials: true }
+      );
+
+      await Swal.fire({
+        title: "Great!",
+        text: "2FA has been enabled",
+        icon: "success",
+        timer: 1000,
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      });
+
+      setUser({ ...user, twofactor: true });
+    } catch (err) {
+      console.error(err);
+      alert("Failed to enable 2FA.");
+    }
+  };
+
+  const handleDeactivate2FA = async () => {
+    try {
+      const response = await API.patch(
+        "/student/disable-two-factor",
+        {},
+        { withCredentials: true }
+      );
+
+      await Swal.fire({
+        title: "Great!",
+        text: "2FA has been disabled",
+        icon: "success",
+        timer: 1000,
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      });
+      // Update twofactor status locally
+      setUser({ ...user, twofactor: false });
+    } catch (err) {
+      console.error(err);
+      alert("Failed to disable 2FA.");
     }
   };
 
@@ -192,19 +249,42 @@ const Dashboard = () => {
             📘 Student Dashboard
           </h1>
         </div>
-        <div className="flex items-center gap-3">
-          <Link to="/student/profile" className="flex items-center gap-2 group">
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <Link
+            to={`/student/profile?id=${userId}`}
+            className="flex items-center gap-2 group"
+          >
             <UserCircle2 className="h-7 w-7 text-gray-600 group-hover:text-blue-600" />
             <span className="text-sm font-medium text-gray-700 group-hover:underline">
               {user?.fullname}
             </span>
           </Link>
+
+          {twofactor === true ? (
+            <Button
+              onClick={handleDeactivate2FA}
+              variant="secondary"
+              className="text-sm text-red-600 border-red-600 hover:bg-red-100"
+            >
+              Disable 2FA 🔐
+            </Button>
+          ) : (
+            <Button
+              onClick={handleActivate2FA}
+              variant="secondary"
+              className="text-sm text-green-600 border-green-600 hover:bg-green-100"
+            >
+              Enable 2FA 🔐
+            </Button>
+          )}
+
+          {/* ✅ Logout Button */}
           <Button
             onClick={handleLogout}
-            variant="outline"
-            className="flex items-center gap-1 text-sm text-red-600 border-red-600 hover:bg-red-50"
+            variant="destructive"
+            className="text-sm"
           >
-            Logout <LogOut className="w-4 h-4" />
+            Logout 🚪
           </Button>
         </div>
       </header>
@@ -307,7 +387,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               ))}
-              <Button
+              {/* <Button
                 size="sm"
                 variant="outline"
                 onClick={() =>
@@ -323,7 +403,7 @@ const Dashboard = () => {
               >
                 <Printer className="w-4 h-4" />
                 Print Result
-              </Button>
+              </Button> */}
             </div>
           )}
         </Card>
@@ -353,7 +433,9 @@ const Dashboard = () => {
             <p className="text-sm text-gray-700">
               {" "}
               <span className="font-medium text-blue-600">
-                {topSubjects.join(", ")}
+                {topSubjects.length > 0
+                  ? topSubjects.join(", ")
+                  : "No exam has been taken"}
               </span>
             </p>
           </div>

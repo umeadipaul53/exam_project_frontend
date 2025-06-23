@@ -24,38 +24,49 @@ const Login = () => {
         { withCredentials: true }
       );
 
-      const { accesstoken, student } = res.data;
-      if (!accesstoken || !student) {
-        throw new Error("Invalid response from server");
+      const { twofactor, student } = res.data;
+      console.log(twofactor, student);
+
+      if (!student || typeof twofactor === "undefined") {
+        throw new Error("Invalid response from server for the student");
       }
 
-      // Sync token to memory and shared store
-      setAccessToken(accesstoken);
-      setToken(accesstoken);
+      if (twofactor === true) {
+        const id = student.id;
+        navigate(`/two-factor-authentication?id=${id}`);
+      } else {
+        const { accesstoken } = res.data;
+        if (!accesstoken) {
+          throw new Error("Invalid response for accesstoken from server");
+        }
+        // Sync token to memory and shared store
+        setAccessToken(accesstoken);
+        setToken(accesstoken);
 
-      const userRes = await API.get("/student/user", {
-        headers: { Authorization: `Bearer ${accesstoken}` },
-      });
+        const userRes = await API.get("/student/user", {
+          headers: { Authorization: `Bearer ${accesstoken}` },
+        });
 
-      const user = userRes.data;
-      setUser(user);
-      setRole(user.role);
+        const user = userRes.data;
+        setUser(user);
+        setRole(user.role);
 
-      Swal.fire({
-        title: "Great!",
-        text: "Login successful",
-        icon: "success",
-        timer: 1500,
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-      });
+        Swal.fire({
+          title: "Great!",
+          text: "Login successful",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+        });
 
-      setTimeout(() => {
-        if (user.role === "admin") navigate("/admin/dashboard");
-        else if (user.role === "staff") navigate("/staff/dashboard");
-        else navigate("/student/dashboard");
-      }, 1500);
+        setTimeout(() => {
+          if (user.role === "admin") navigate("/admin/dashboard");
+          else if (user.role === "staff") navigate("/staff/dashboard");
+          else navigate("/student/dashboard");
+        }, 1500);
+      }
     } catch (error) {
       console.error("Login failed:", error);
       Swal.fire(

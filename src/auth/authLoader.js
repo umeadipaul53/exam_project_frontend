@@ -1,6 +1,6 @@
 import API from "../api/api";
 import { redirect } from "react-router-dom";
-import { getToken, setToken, setRole, getRole } from "./tokenStore";
+import { getToken, setToken, setRole } from "./tokenStore";
 
 export function AuthLoader(expectedRole) {
   return async () => {

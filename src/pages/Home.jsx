@@ -5,11 +5,6 @@ import { useNavigate } from "react-router-dom";
 const Home = () => {
   const navigate = useNavigate();
 
-  const upcomingTests = [
-    { subject: "English", date: "June 15", time: "10:00 AM" },
-    { subject: "Mathematics", date: "June 18", time: "1:00 PM" },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
       {/* Header */}
