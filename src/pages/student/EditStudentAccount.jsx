@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import API from "../api/api";
+import API from "../../api/api";
 import { useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
@@ -25,7 +25,7 @@ const EditStudentAccount = () => {
       const res = await API.get(`/student/student-profile?id=${id}`);
       const fetcheddata = res.data;
       setFetchUserDetail(fetcheddata);
-      setUsername(fetcheddata.username || ""); //this is done to guide against undefined or
+      setUsername(fetcheddata.username || ""); //this is done to guide against undefined
       setEmail(fetcheddata.email || "");
       setPhone(fetcheddata.phone || "");
       setFullname(fetcheddata.fullname || "");

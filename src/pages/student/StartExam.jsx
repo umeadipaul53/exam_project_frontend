@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { waitForToken } from "../auth/tokenStore";
-import API from "../api/api";
+import { waitForToken } from "../../auth/tokenStore";
+import API from "../../api/api";
 
 const StartExam = () => {
   const [searchParams] = useSearchParams();
@@ -20,6 +20,8 @@ const StartExam = () => {
   const [timeLeft, setTimeLeft] = useState(timeAlotted);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const currentYear = new Date().getFullYear();
 
   const currentQuestion = questions[currentIndex];
   const autoSubmitRef = useRef();
@@ -50,6 +52,7 @@ const StartExam = () => {
 
   // Submit all answers
   const submitAllAnswers = async () => {
+    console.log("📤 Submitting all answers...");
     const updatedAnswers = { ...selectedAnswers };
 
     if (
@@ -61,13 +64,19 @@ const StartExam = () => {
     }
 
     const entries = Object.entries(updatedAnswers);
+
+    if (entries.length === 0) {
+      console.warn("⚠️ No answers to submit!");
+      return;
+    }
+
     const promises = entries.map(([questionId, selectedOption]) =>
       API.patch("/student/submit-answer", {
         sessionId,
         questionId,
         selectedOption,
-      }).catch(() =>
-        console.error(`Failed to submit answer for Q${questionId}`)
+      }).catch((err) =>
+        console.error(`Failed to submit answer for Q${questionId}`, err)
       )
     );
 
@@ -75,35 +84,54 @@ const StartExam = () => {
   };
 
   const finishExam = async () => {
+    console.log("✅ Finalizing exam...");
     try {
       await API.patch("/student/finish-exam", { sessionId });
-    } catch {
-      console.error("Failed to finalize exam");
+      console.log("✅ Exam finalized successfully.");
+    } catch (err) {
+      console.error("Failed to finalize exam", err);
     }
   };
 
   const handleAutoSubmit = async () => {
     console.log("⏰ Time up! Auto-submitting...");
-    await submitAllAnswers();
-    await finishExam();
-    localStorage.removeItem("sessionId");
-    localStorage.removeItem("answers");
-    localStorage.removeItem("currentIndex");
-    alert("Time's up! Exam submitted.");
-    navigate("/student/dashboard");
+    setSubmitting(true);
+    try {
+      await submitAllAnswers();
+      await finishExam();
+      localStorage.clear();
+      // localStorage.removeItem("sessionId");
+      // localStorage.removeItem("answers");
+      // localStorage.removeItem("currentIndex");
+      alert("Time's up! Exam submitted.");
+      navigate("/student/dashboard");
+    } catch (err) {
+      alert("Failed to autosubmit exam. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   autoSubmitRef.current = handleAutoSubmit;
 
   const handleSubmit = async () => {
     if (!window.confirm("Are you sure you want to submit?")) return;
-    await submitAllAnswers();
-    await finishExam();
-    localStorage.removeItem("sessionId");
-    localStorage.removeItem("answers");
-    localStorage.removeItem("currentIndex");
-    alert("Your exam was submitted successfully.");
-    navigate("/student/dashboard");
+
+    console.log("🚀 Submitting test...");
+    try {
+      await submitAllAnswers();
+      await finishExam();
+      localStorage.clear();
+      // localStorage.removeItem("sessionId");
+      // localStorage.removeItem("answers");
+      // localStorage.removeItem("currentIndex");
+      alert("Your exam was submitted successfully.");
+      navigate("/student/dashboard");
+    } catch (err) {
+      alert("Failed to submit exam. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSelect = (option) => {
@@ -132,6 +160,7 @@ const StartExam = () => {
           regno
         )}&subject=${encodeURIComponent(examSubject)}`
       );
+
       setQuestions(res.data.data.questions);
     } catch {
       setErrorMsg("Failed to fetch questions.");
@@ -177,7 +206,9 @@ const StartExam = () => {
             regno
           )}&class=${encodeURIComponent(
             examClass
-          )}&subject=${encodeURIComponent(examSubject)}`
+          )}&subject=${encodeURIComponent(
+            examSubject
+          )}&year=${encodeURIComponent(currentYear)}`
         );
         const newSessionId = res.data.sessionId;
         setSessionId(newSessionId);
@@ -305,7 +336,7 @@ const StartExam = () => {
         <div className="mt-8 text-center">
           <button
             onClick={handleSubmit}
-            disabled={timeLeft === 0}
+            disabled={submitting || timeLeft === 0}
             className={`px-8 py-3 rounded-xl font-semibold text-md shadow transition
               ${
                 timeLeft === 0
@@ -313,7 +344,7 @@ const StartExam = () => {
                   : "bg-green-600 text-white hover:bg-green-700"
               }`}
           >
-            ✅ Submit Test
+            {submitting ? "Submitting..." : "✅ Submit Test"}
           </button>
         </div>
       </div>

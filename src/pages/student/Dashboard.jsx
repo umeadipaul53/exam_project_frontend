@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../auth/AuthProvider";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useAuth } from "../../auth/AuthProvider";
 import { UserCircle2, LogOut, PlayCircle } from "lucide-react";
-import API from "../api/api";
-import { clearToken } from "../auth/tokenStore";
+import API from "../../api/api";
+import { clearToken } from "../../auth/tokenStore";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { Printer } from "lucide-react";
@@ -35,6 +27,8 @@ const Button = ({
       primary: "bg-blue-600 text-white hover:bg-blue-700",
       outline: "border border-gray-300 text-gray-700 hover:bg-gray-100",
       ghost: "text-gray-600 hover:bg-gray-100",
+      secondary: "border border-gray-400 text-gray-800 hover:bg-gray-200",
+      destructive: "bg-red-600 text-white hover:bg-red-700",
     }[variant] || "";
 
   const sizeClasses =
@@ -63,10 +57,12 @@ const Dashboard = () => {
   const [passRate, setPassRate] = useState(0);
   const [subjectScores, setSubjectScores] = useState({});
   const [topSubjects, setTopSubjects] = useState([]);
+  const [ready, setReady] = useState(null);
+  const [pending, setPending] = useState([]);
   const currentYear = new Date().getFullYear();
 
-  const userId = user.id;
-  const twofactor = user.twofactor;
+  const userId = user?.id;
+  const twofactor = user?.twofactor;
 
   const formatDuration = (minutes) => {
     if (minutes <= 59) {
@@ -107,13 +103,16 @@ const Dashboard = () => {
 
       setTotalExamTaken(total);
 
-      setAverageScore(
-        parseFloat(
-          (resultData.reduce((acc, res) => acc + (res.totalscore || 0), 0) /
-            resultData.reduce((acc, res) => acc + (res.maxscore || 1), 0)) *
-            100
-        ).toFixed(1)
+      const totalScore = resultData.reduce(
+        (acc, res) => acc + (res.totalscore || 0),
+        0
       );
+      const maxScore = resultData.reduce(
+        (acc, res) => acc + (res.maxscore || 0),
+        0
+      );
+      const avg = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+      setAverageScore(parseFloat(avg).toFixed(1));
 
       const passCount = resultData.filter(
         (res) => res.status === "Pass"
@@ -240,6 +239,29 @@ const Dashboard = () => {
     getResult();
   }, []);
 
+  useEffect(() => {
+    const checkResultStatus = async () => {
+      try {
+        const res = await API.get("/student/check-result-printing-status", {
+          params: { regno: user.regno, class: user.class, year: currentYear },
+        });
+
+        const dataGotten = res.data.data;
+
+        setReady(dataGotten.allDone);
+        setPending(dataGotten.pendingSubjects);
+      } catch (error) {
+        setReady(null);
+        console.log(error);
+      }
+    };
+
+    checkResultStatus();
+  }, [user]);
+
+  const examMessage = !Array.isArray(fetchExam) && fetchExam?.message;
+  const resultMessage = !Array.isArray(fetchResult) && fetchResult?.message;
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8">
       {/* Header */}
@@ -295,9 +317,7 @@ const Dashboard = () => {
         <Card className="p-5">
           <h2 className="text-lg font-semibold mb-4">📝 Available Tests</h2>
 
-          {!Array.isArray(fetchExam) && fetchExam?.message && (
-            <p className="text-sm text-gray-500 italic">{fetchExam.message}</p>
-          )}
+          {examMessage && <p className="text-sm italic">{examMessage}</p>}
 
           {Array.isArray(fetchExam) && fetchExam.length > 0 && (
             <div className="space-y-3">
@@ -314,6 +334,19 @@ const Dashboard = () => {
                   </div>
                   <Button
                     onClick={() => {
+                      if (
+                        !test.class ||
+                        !test.subject ||
+                        !test.duration ||
+                        !user?.regno
+                      ) {
+                        Swal.fire(
+                          "Missing Info",
+                          "Incomplete test or user data",
+                          "warning"
+                        );
+                        return;
+                      }
                       navigate(
                         `/student/start_exam?class=${encodeURIComponent(
                           test.class
@@ -342,11 +375,7 @@ const Dashboard = () => {
             🎓 Completed Exam Results
           </h2>
 
-          {!Array.isArray(fetchResult) && fetchResult?.message && (
-            <p className="text-sm text-gray-500 italic">
-              {fetchResult.message}
-            </p>
-          )}
+          {resultMessage && <p className="text-sm italic">{resultMessage}</p>}
 
           {Array.isArray(fetchResult) && fetchResult.length > 0 && (
             <div className="space-y-3">
@@ -387,23 +416,39 @@ const Dashboard = () => {
                   </div>
                 </div>
               ))}
-              {/* <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  navigate(
-                    `/student/print_result?class=${encodeURIComponent(
-                      user.class
-                    )}&regno=${encodeURIComponent(
-                      user?.regno
-                    )}&year=${currentYear}`
-                  )
-                }
-                className="flex items-center gap-1 text-sm"
-              >
-                <Printer className="w-4 h-4" />
-                Print Result
-              </Button> */}
+
+              {ready && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigate(
+                      `/student/print_result?class=${encodeURIComponent(
+                        user.class
+                      )}&regno=${encodeURIComponent(
+                        user?.regno
+                      )}&year=${currentYear}`
+                    );
+                  }}
+                  className="flex items-center gap-1 text-sm"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print Result
+                </Button>
+              )}
+
+              {pending && (
+                <div className="text-red-500 mt-2">
+                  {pending.length > 0 && (
+                    <ul className="list-disc ml-5">
+                      <h2 className="text-3xl text-red-600">Exams not taken</h2>
+                      {pending.map((subject) => (
+                        <li key={subject}>{subject}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </Card>

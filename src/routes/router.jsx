@@ -1,20 +1,20 @@
 import { createBrowserRouter } from "react-router-dom";
 import Home from "../pages/Home";
-import Dashboard from "../pages/Dashboard";
+import Dashboard from "../pages/student/Dashboard";
 import Login from "../pages/Login";
-import SetExamQuestions from "../pages/SetExamQuestions";
+import SetExamQuestions from "../pages/admin/SetExamQuestions";
 import { AuthLoader } from "../auth/authLoader";
 import AuthInit from "../pages/AuthInit";
-import StudentProfile from "../pages/StudentProfile";
+import StudentProfile from "../pages/student/StudentProfile";
 import Register from "../pages/Register";
-import StartExam from "../pages/StartExam";
+import StartExam from "../pages/student/StartExam";
 import VerifyAccount from "../pages/VerifyAccount";
 import ForgotPassword from "../pages/ForgotPassword";
 import ChangePassword from "../pages/ChangePassword";
 import UnAuthorized from "../pages/UnAuthorized";
-import PrintResult from "../pages/PrintResult";
+import PrintResult from "../pages/student/PrintResult";
 import TwoFactorAuthentication from "../pages/TwoFactorAuthentication";
-import EditStudentAccount from "../pages/EditStudentAccount";
+import EditStudentAccount from "../pages/student/EditStudentAccount";
 
 const router = createBrowserRouter([
   {
@@ -74,6 +74,7 @@ const router = createBrowserRouter([
         <PrintResult />
       </AuthInit>
     ),
+
     loader: AuthLoader("user"),
   },
   {

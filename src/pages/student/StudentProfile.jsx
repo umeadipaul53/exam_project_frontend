@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { LogOut, Pencil, UserCircle2 } from "lucide-react";
-import { useAuth } from "../auth/AuthProvider";
+import { useAuth } from "../../auth/AuthProvider";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import API from "../api/api";
+import API from "../../api/api";
 
 const Button = ({
   children,
