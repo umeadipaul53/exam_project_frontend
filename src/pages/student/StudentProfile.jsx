@@ -48,18 +48,20 @@ const StudentProfile = () => {
   const navigate = useNavigate();
 
   const handleFetchProfile = async () => {
-    const res = await API.get(`/student/student-profile?id=${id}`);
-    const userData = res.data;
-
-    console.log(userData);
-
-    setMyProfile(userData);
-    setUsername(userData.username);
-    setEmail(userData.email);
-    setPhone(userData.phone);
-    setStudentClass(userData.class);
-    setRegno(userData.regno);
-    setFullname(userData.fullname);
+    try {
+      const res = await API.get(`/student/student-profile?id=${id}`);
+      const userData = res.data;
+      setMyProfile(userData);
+      setUsername(userData.username);
+      setEmail(userData.email);
+      setPhone(userData.phone);
+      setStudentClass(userData.class);
+      setRegno(userData.regno);
+      setFullname(userData.fullname);
+    } catch (error) {
+      console.log("something went wrong", error);
+      navigate("/student/dashboard");
+    }
   };
 
   const handleLogout = async () => {

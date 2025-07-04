@@ -10,7 +10,7 @@ const TwoFactorAuthentication = () => {
   const navigate = useNavigate();
   const { setAccessToken, setUser } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [timer, setTimer] = useState(120);
+  const [timer, setTimer] = useState(60);
   const [resendAvailable, setResendAvailable] = useState(false);
 
   const inputRefs = useRef([]);
@@ -117,7 +117,7 @@ const TwoFactorAuthentication = () => {
       setLoading(true);
       await API.post("/student/resend-otp", { id: idmain }); // ✅ Customize API route if needed
       Swal.fire("OTP Sent", "A new code has been sent to your email.", "info");
-      setTimer(120);
+      setTimer(60);
       setResendAvailable(false);
     } catch (error) {
       console.error("Resend failed:", error);
@@ -137,7 +137,8 @@ const TwoFactorAuthentication = () => {
         Verify Your Account
       </h2>
       <p className="text-sm text-gray-500 mb-4 text-center">
-        Enter the 6-digit code we sent to your email.
+        Complete the verification by providing the OTP that you received by
+        registered e-mail.
       </p>
 
       <form onSubmit={handleVerify}>
@@ -176,10 +177,10 @@ const TwoFactorAuthentication = () => {
             className="text-blue-600 hover:underline font-medium"
             disabled={loading}
           >
-            Resend OTP
+            Didn't receive OTP? Resend OTP
           </button>
         ) : (
-          <span> {timer}s</span>
+          <span>Expect OTP in {timer}s</span>
         )}
       </div>
     </div>

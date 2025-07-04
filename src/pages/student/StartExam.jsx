@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { waitForToken } from "../../auth/tokenStore";
 import API from "../../api/api";
 
 const StartExam = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const examClass = searchParams.get("class");
-  const examSubject = searchParams.get("subject");
-  const regno = searchParams.get("regno");
-  const timeAlotted = searchParams.get("duration") * 60;
+  const location = useLocation();
+  const { studentClass, subject, regno, duration } = location.state || {};
+  const timeAlotted = duration * 60;
 
   const [isStarting, setIsStarting] = useState(false);
   const [lastSelected, setLastSelected] = useState(null);
@@ -99,10 +98,11 @@ const StartExam = () => {
     try {
       await submitAllAnswers();
       await finishExam();
-      localStorage.clear();
-      // localStorage.removeItem("sessionId");
-      // localStorage.removeItem("answers");
-      // localStorage.removeItem("currentIndex");
+      localStorage.removeItem("sessionId");
+      localStorage.removeItem("answers");
+      localStorage.removeItem("currentIndex");
+      localStorage.removeItem("lastSelected");
+
       alert("Time's up! Exam submitted.");
       navigate("/student/dashboard");
     } catch (err) {
@@ -121,10 +121,10 @@ const StartExam = () => {
     try {
       await submitAllAnswers();
       await finishExam();
-      localStorage.clear();
-      // localStorage.removeItem("sessionId");
-      // localStorage.removeItem("answers");
-      // localStorage.removeItem("currentIndex");
+      localStorage.removeItem("sessionId");
+      localStorage.removeItem("answers");
+      localStorage.removeItem("currentIndex");
+      localStorage.removeItem("lastSelected");
       alert("Your exam was submitted successfully.");
       navigate("/student/dashboard");
     } catch (err) {
@@ -158,7 +158,7 @@ const StartExam = () => {
       const res = await API.get(
         `/student/fetch_questions?regno=${encodeURIComponent(
           regno
-        )}&subject=${encodeURIComponent(examSubject)}`
+        )}&subject=${encodeURIComponent(subject)}`
       );
 
       setQuestions(res.data.data.questions);
@@ -201,19 +201,30 @@ const StartExam = () => {
         }
 
         await waitForToken();
-        const res = await API.post(
-          `/student/start-exam?regno=${encodeURIComponent(
-            regno
-          )}&class=${encodeURIComponent(
-            examClass
-          )}&subject=${encodeURIComponent(
-            examSubject
-          )}&year=${encodeURIComponent(currentYear)}`
-        );
-        const newSessionId = res.data.sessionId;
-        setSessionId(newSessionId);
-        localStorage.setItem("sessionId", newSessionId);
-        await fetchQuestions();
+        try {
+          const res = await API.post("/student/start-exam", {
+            regno,
+            subject,
+            class: studentClass,
+            year: currentYear,
+          });
+
+          const newSessionId = res.data.sessionId;
+          setSessionId(newSessionId);
+          localStorage.setItem("sessionId", newSessionId);
+          await fetchQuestions();
+        } catch (err) {
+          if (err.response?.status === 403) {
+            const message =
+              err.response.data.message || "You have already taken this exam.";
+            setErrorMsg(message);
+
+            // Optional: Navigate back to dashboard after showing error
+            setTimeout(() => navigate("/student/dashboard"), 5000);
+          } else {
+            setErrorMsg("Unexpected error while starting exam.");
+          }
+        }
       } catch (err) {
         setErrorMsg(err.response?.data?.message || "Could not start exam.");
       } finally {

@@ -347,15 +347,14 @@ const Dashboard = () => {
                         );
                         return;
                       }
-                      navigate(
-                        `/student/start_exam?class=${encodeURIComponent(
-                          test.class
-                        )}&subject=${encodeURIComponent(
-                          test.subject
-                        )}&regno=${encodeURIComponent(
-                          user?.regno
-                        )}&duration=${encodeURIComponent(test.duration)}`
-                      );
+                      navigate("/student/start_exam", {
+                        state: {
+                          studentClass: test.class,
+                          subject: test.subject,
+                          regno: user?.regno,
+                          duration: test.duration,
+                        },
+                      });
                     }}
                     size="sm"
                     variant="default"
